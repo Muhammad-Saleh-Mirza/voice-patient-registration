@@ -1,0 +1,21 @@
+# Render blueprint. Push this repo, then New -> Blueprint in the Render dashboard.
+# DATABASE_URL and VAPI_SERVER_SECRET are marked `sync: false`, which means Render
+# prompts for them rather than storing them in the repo. No secret is committed.
+services:
+  - type: web
+    name: voice-patient-registration
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Neon/Supabase Postgres connection string. `postgres://` is accepted and
+      # rewritten automatically — paste it exactly as the provider gives it.
+      - key: DATABASE_URL
+        sync: false
+      # Must match the `secret` configured on each Vapi tool's server object.
+      - key: VAPI_SERVER_SECRET
+        sync: false
