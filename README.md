@@ -12,18 +12,27 @@ Call twice and the second call recognises you.
 
 | | |
 |---|---|
-| **Phone number** | `+1 XXX XXX XXXX` |
-| **API base URL** | `https://XXXX.onrender.com` |
-| **Interactive API docs** | `https://XXXX.onrender.com/docs` |
-| **Dashboard** | `https://XXXX.onrender.com/dashboard` |
+| **Phone number** | **`+1 (469) 856-4621`** |
+| **API base URL** | https://voice-patient-registration-z3jx.onrender.com |
+| **Interactive API docs** | https://voice-patient-registration-z3jx.onrender.com/docs |
+| **Dashboard** | https://voice-patient-registration-z3jx.onrender.com/dashboard |
 
-> Fill these three values in before submitting.
+**Fastest way to verify it works:** call the number, register a patient, then
+open the dashboard. The record is there. Call back from the same phone and the
+agent greets you by name and offers to update rather than duplicate.
 
-**Fastest way to verify it works:** call the number, register yourself, then open
-the dashboard URL. Your record is there. Call again from the same phone and the
-agent greets you by name.
+Worth trying on the call:
 
-No credentials are needed to read the API.
+- **Correct yourself mid-registration** — "actually, that's spelled D-A-V-I-S."
+  The agent accepts the correction and carries on rather than restarting.
+- **Give a date of birth in the future.** The agent explains the problem in plain
+  speech and re-asks only that one field. That message comes from the server, not
+  the prompt — see *The one design decision that shapes everything* below.
+- **Say your address as one sentence.** Street, city, state and ZIP are parsed
+  out of a single answer rather than asked for one at a time.
+
+No credentials are needed to read the API. The dashboard already contains
+records created through real calls.
 
 ---
 
@@ -162,7 +171,7 @@ Query parameters get the same normalisation as body fields, so
 ### Try it
 
 ```bash
-BASE=https://XXXX.onrender.com
+BASE=https://voice-patient-registration-z3jx.onrender.com
 
 curl "$BASE/patients"
 curl "$BASE/patients?last_name=Delgado"
@@ -323,14 +332,35 @@ pytest -q      # 24 tests
 
 ### Vapi
 
-1. Create an assistant. Paste the prompt from
-   [`prompts/system_prompt.md`](prompts/system_prompt.md) into the System Prompt field.
-2. Create the three tools from [`prompts/vapi_tools.json`](prompts/vapi_tools.json),
-   replacing `BASE_URL` with your Render URL. All three point at
-   `{BASE_URL}/vapi/tools`; the server dispatches on tool name.
-3. Set each tool's server `secret` to the same value as `VAPI_SERVER_SECRET`.
-4. Enable server messages `tool-calls` and `end-of-call-report`.
-5. Buy or import a phone number and attach the assistant.
+The assistant is defined as a versioned file, not as dashboard clicks, so its
+prompt and tool schemas are reviewable in this repo and reproducible if it has to
+be rebuilt. [`prompts/vapi_assistant.json`](prompts/vapi_assistant.json) is
+generated from [`prompts/system_prompt.md`](prompts/system_prompt.md) and
+[`prompts/vapi_tools.json`](prompts/vapi_tools.json), so the prompt has one
+source of truth.
+
+```powershell
+.\scripts\create_vapi_assistant.ps1 `
+  -VapiPrivateKey "<your Vapi private key>" `
+  -BaseUrl "https://your-app.onrender.com" `
+  -ServerSecret "<same value as VAPI_SERVER_SECRET>"
+```
+
+```bash
+# bash equivalent
+sed -e "s|BASE_URL|$BASE_URL|g" -e "s|YOUR_VAPI_SERVER_SECRET|$SERVER_SECRET|g" \
+  prompts/vapi_assistant.json | \
+curl -s -X POST https://api.vapi.ai/assistant \
+  -H "Authorization: Bearer $VAPI_PRIVATE_KEY" \
+  -H "content-type: application/json" -d @-
+```
+
+Then in the Vapi dashboard: **Phone Numbers → buy a US number → set its inbound
+assistant** to the one just created.
+
+All three tools point at the same endpoint, `{BASE_URL}/vapi/tools`; the server
+dispatches on tool name. One webhook URL means one thing to configure and one
+thing to get wrong.
 
 ### Environment variables
 
